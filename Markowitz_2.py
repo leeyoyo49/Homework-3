@@ -70,13 +70,56 @@ class MyPortfolio:
         """
         TODO: Complete Task 4 Below
         """
-
+        self.portfolio_weights['XLK'] = 1
+        # for i in range(self.lookback + 1, len(self.price)):
+        #     R_n = self.returns.copy()[assets].iloc[i - self.lookback : i]
+        #     self.portfolio_weights.loc[self.price.index[i], assets] = self.mv_opt(
+        #         R_n, self.gamma
+        #     )
         """
         TODO: Complete Task 4 Above
         """
 
         self.portfolio_weights.ffill(inplace=True)
         self.portfolio_weights.fillna(0, inplace=True)
+
+    def mv_opt(self, R_n, gamma):
+        Sigma = R_n.cov().values
+        mu = R_n.mean().values
+        n = len(R_n.columns)
+
+        with gp.Env(empty=True) as env:
+            env.setParam("OutputFlag", 0)
+            env.setParam("DualReductions", 0)
+            env.start()
+            with gp.Model(env=env, name="portfolio") as model:
+                w = model.addMVar(n, name='w', lb=0, ub=1)
+                model.setObjective(w@ mu - gamma/2 * (w@Sigma)@w, gp.GRB.MAXIMIZE)
+                constr = model.addConstr(w@np.ones(n) == 1, name='constr')
+                model.optimize()
+
+                # Check if the status is INF_OR_UNBD (code 4)
+                if model.status == gp.GRB.INF_OR_UNBD:
+                    print(
+                        "Model status is INF_OR_UNBD. Reoptimizing with DualReductions set to 0."
+                    )
+                elif model.status == gp.GRB.INFEASIBLE:
+                    # Handle infeasible model
+                    print("Model is infeasible.")
+                elif model.status == gp.GRB.INF_OR_UNBD:
+                    # Handle infeasible or unbounded model
+                    print("Model is infeasible or unbounded.")
+
+                if model.status == gp.GRB.OPTIMAL or model.status == gp.GRB.SUBOPTIMAL:
+                    # Extract the solution
+                    solution = []
+                    for i in range(n):
+                        var = model.getVarByName(f"w[{i}]")
+                        # print(f"w {i} = {var.X}")
+                        solution.append(var.X)
+
+        return solution
+
 
     def calculate_portfolio_returns(self):
         # Ensure weights are calculated
