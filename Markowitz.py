@@ -66,7 +66,9 @@ class EqualWeightPortfolio:
         """
         TODO: Complete Task 1 Below
         """
-
+        # Set equal weights for each asset
+        for i in range(len(assets)):
+            self.portfolio_weights.iloc[0,i] = 1 / len(assets)
         """
         TODO: Complete Task 1 Above
         """
